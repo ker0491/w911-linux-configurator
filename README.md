@@ -4,7 +4,19 @@
 
 
 W911（SXS-W911 / USB 名称 `K100 Keyboard`，VID:PID `b6a4:4100`）的网页版改键工具。
-不用安装 Windows 驱动，Chrome/Edge 打开一个本地网页就能改键、改旋钮、写宏和调灯光。
+不用安装 Windows 驱动，Chrome/Edge 打开一个网页就能改键、改旋钮、写宏和调灯光。
+
+## 平台支持
+
+**网页配置器本身是跨平台的**：Windows、macOS、Linux、ChromeOS 上的 Chrome / Edge / Brave /
+Opera / Vivaldi 都可以用。Firefox 和 Safari 没有 WebHID，不能用；Android / iOS 不保证。
+
+- **Linux**：需要装一次 udev 规则；`start.sh` 和 `tools/monitor.py` 是 Linux 专用。
+- **Windows / macOS**：不需要驱动，也不需要 udev；用 Chromium 浏览器打开页面，
+  插 USB 线直接连接即可。Windows 上如果开着厂商的 SXS 程序，先退出（它会占用设备）。
+- 配置必须走 **USB 线**；配置完成后，键盘插到任何电脑/系统都能用（设置存在键盘里）。
+
+仓库名里的 “Linux” 是因为项目最初在 Linux 上做的；网页部分并不限于 Linux。
 
 W911 和 W909 使用同一套厂商 HID 协议。本工具是在 W909 配置器的基础上，按 W911 的
 19 键布局改的；已经在 W911 固件 `2.3.0003`（板号 `K2009-B00.260421`）上验证过读取和写入。
