@@ -1,5 +1,8 @@
 # W911 Linux 配置器
 
+在线使用（GitHub Pages）：<https://ker0491.github.io/w911-linux-configurator/>
+
+
 W911（SXS-W911 / USB 名称 `K100 Keyboard`，VID:PID `b6a4:4100`）的网页版改键工具。
 不用安装 Windows 驱动，Chrome/Edge 打开一个本地网页就能改键、改旋钮、写宏和调灯光。
 
