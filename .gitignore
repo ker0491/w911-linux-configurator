@@ -1,0 +1,9 @@
+# user-specific backups (may contain macros/passwords)
+backup-*.json
+tools/knob-*.json
+tools/fix-knob.py
+
+# local logs / caches
+*.log
+__pycache__/
+.DS_Store

@@ -1,0 +1,19 @@
+W911 Linux Configurator
+=======================
+
+This project is a derivative of the Syntax Keyboard Configurator:
+
+    https://github.com/syntaxfm/keyboard
+
+Copyright (c) 2026 CJ Reynolds, licensed under the MIT License.
+The original project targets the W909 macro pad; this version adds W911
+layout/geometry, the 7-shaped ENTER, knob/roller mapping, Chinese UI and
+several workflow changes.
+
+The W911/W909 USB HID protocol, key matrix mapping and the keycap dimensions
+were derived from the vendor software and from a user-supplied STEP model.
+No vendor software or firmware is included in this repository.
+
+This is an unofficial project. It is not affiliated with or endorsed by the
+keyboard manufacturer. It writes settings directly to the device; back up
+your configuration before experimenting.

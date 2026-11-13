@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>W911 键盘配置器</title>
+  <meta name="description" content="在浏览器里配置 W911 / SXS-W911 宏键盘：改键、旋钮、灯光、宏。无需安装驱动。">
+  <meta name="theme-color" content="#000000">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1 class="brand"><span class="w911-logo">W911</span><span>键盘配置器</span></h1>
+    <div class="conn">
+      <span id="status">未连接</span>
+      <button id="connect" class="primary">连接键盘</button>
+    </div>
+  </header>
+
+  <div id="unsupported" class="banner" hidden>
+    这个浏览器不能直接访问 USB 键盘。请用桌面版 Chrome、Edge、Brave 或 Opera 打开本页。
+  </div>
+
+  <div id="intro" class="banner">
+    用 <b>USB 线</b>连接 W911，然后点“连接键盘”，在列表里选择
+    <b>“K100 Keyboard”</b>（有些系统显示为 “W911 Pro USB”）。改完点“写入键盘”即可。
+  </div>
+
+  <details id="help-linux" class="banner help" hidden>
+    <summary><b>Linux 首次使用：需要给浏览器授权</b>（只需做一次）</summary>
+    <p>Linux 默认只有 root 能打开 USB HID 设备。复制下面的命令到终端执行，然后拔插一次键盘：</p>
+    <div class="code"><pre id="udev-cmd">sudo tee /etc/udev/rules.d/70-w911.rules &lt;&lt;'EOF'
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="b6a4", ATTRS{idProduct}=="4100", MODE="0660", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="b6a4", ATTRS{idProduct}=="4101", MODE="0660", TAG+="uaccess"
+EOF
+sudo udevadm control --reload-rules &amp;&amp; sudo udevadm trigger</pre>
+      <button class="copy" data-copy="udev-cmd">复制</button></div>
+    <ul>
+      <li>这条规则只影响 VID <code>b6a4</code> 的 W911，不会影响别的设备。</li>
+      <li>如果 Chrome 是 Snap/Flatpak 安装的，可能仍被沙箱挡住；请用 deb 版 Chrome。</li>
+      <li>如果设备列表里没有，先确认 <code>lsusb | grep -i b6a4</code> 能看到它；不行就换一根 A-to-C 线（很多这类键盘用 C-to-C 线不亮）。</li>
+      <li>配置必须走 USB 线；2.4G / 蓝牙模式只能使用，不能改设置。</li>
+    </ul>
+  </details>
+
+  <main id="app" hidden>
+    <div id="readonly" class="banner warn" hidden>
+      <b>只读模式：当前通过 2.4G 接收器连接。</b>
+      接收器能读设置但不会写入。请换 USB 线，然后
+      <button id="use-cable" class="primary">切换到 USB 线</button>
+      并选择 “K100 Keyboard”。
+    </div>
+    <section class="toolbar">
+      <div class="seg" id="profiles">
+        <button data-profile="0">配置 1</button>
+        <button data-profile="1">配置 2</button>
+      </div>
+      <button id="reload">从键盘重新读取</button>
+      <span class="sep"></span>
+      <button id="backup" title="把当前配置（按键、旋钮、宏、灯光、休眠）保存成 JSON 文件">备份配置</button>
+      <button id="restore" title="从 JSON 文件恢复配置">恢复…</button>
+      <button id="copy-profile" title="把当前配置的按键、旋钮、灯光复制到另一个配置">复制到另一配置</button>
+      <button id="clear-keys" title="清空中间 19 个键（X/Y/Z、摇杆、旋钮、滚轮不变）">清空全部 19 键</button>
+      <input type="file" id="restore-file" accept=".json,application/json" hidden>
+      <span id="info" class="muted"></span>
+    </section>
+    <p class="muted small" style="margin:-6px 0 0">切到配置 2 之前，建议先点 <b>复制到另一配置</b>：配置 2 如果没设置过，键盘会没有输出。
+      如果已经切过去没反应，点 <b>配置 1</b> 就能切回来。</p>
+    <div id="fw-warning" class="banner warn" hidden></div>
+
+    <div class="columns">
+      <section class="pad-wrap">
+        <div class="board-wrap">
+        <div class="offline-msg">
+          <b>未连接</b>
+          <span>用 USB 线插上键盘，然后点“连接键盘”。</span>
+        </div>
+        <div class="board w911" id="board">
+          <div class="w911-side left">
+            <div class="knob-pad">
+              <div class="knob-big" title="旋钮：点左半边 / 右半边">
+                <button class="slot knob-half left" data-knob-dir="3" data-name="旋钮：左" title="旋钮左"></button>
+                <button class="slot knob-half right" data-knob-dir="2" data-name="旋钮：右" title="旋钮右"></button>
+                <div class="knob-dot"></div>
+              </div>
+              <div class="side-caption" id="knob-caption"></div>
+            </div>
+            <div class="small-keys">
+              <button class="slot small" data-key="4" data-name="X 键"><small>X</small><span></span></button>
+              <button class="slot small" data-key="12" data-name="Y 键"><small>Y</small><span></span></button>
+              <button class="slot small wide" data-key="20" data-name="Z 键"><small>Z</small><span></span></button>
+            </div>
+          </div>
+
+          <div class="w911-keys">
+            <div class="w911-grid" id="grid"></div>
+          </div>
+
+          <div class="w911-side right">
+            <div class="joy-pad">
+              <button class="slot joy up" data-key="5" data-name="摇杆：上"><small>上</small><span></span></button>
+              <button class="slot joy left" data-key="21" data-name="摇杆：左"><small>左</small><span></span></button>
+              <button class="slot joy-center" data-key="37" data-name="摇杆中键：切换配置"><span></span></button>
+              <button class="slot joy right" data-key="29" data-name="摇杆：右"><small>右</small><span></span></button>
+              <button class="slot joy down" data-key="13" data-name="摇杆：下"><small>下</small><span></span></button>
+            </div>
+            <div class="roller-pad">
+              <div class="roller-big" title="滚轮：点上半 / 下半">
+                <button class="slot roller-half up" data-knob-dir="0" data-name="滚轮：上" title="滚轮上"></button>
+                <button class="slot roller-half down" data-knob-dir="1" data-name="滚轮：下" title="滚轮下"></button>
+                <div class="roller-ribs"></div>
+              </div>
+              <div class="side-caption" id="roller-caption"></div>
+            </div>
+          </div>
+        </div>
+        </div>
+        <p class="muted small">按真实位置排版：左上旋钮（←/→），左下 X/Y/Z 三个按钮；右上摇杆（四方向+中键切换配置），右下滚轮（↑/↓）；
+          中间 19 个键帽。键帽上只显示它当前设置的功能，不显示印字；键位编号在悬停提示和编辑器里。
+          灯光切换键在键盘背面，不在正面键区。点击任意控件，或直接按设备上的键来选中。改完点右侧“写入键盘”。</p>
+      </section>
+
+      <aside id="editor" class="card" hidden>
+        <h2 id="ed-title">按键</h2>
+        <p class="muted" id="ed-current"></p>
+        <div class="tabs" id="ed-tabs">
+          <button data-tab="key">单键</button>
+          <button data-tab="shortcut">组合键</button>
+          <button data-tab="text">输入文字</button>
+          <button data-tab="special">媒体 / 鼠标 / 其他</button>
+          <button data-tab="none">禁用</button>
+        </div>
+
+        <div class="tab" data-pane="key">
+          <label>按键 <select id="ed-key"></select></label>
+          <button id="ed-capture" class="ghost">…或按一下电脑键盘上的键</button>
+        </div>
+
+        <div class="tab" data-pane="shortcut">
+          <div id="ed-mods" class="mods"></div>
+          <label>按键 <select id="ed-sc-key"></select></label>
+          <button id="ed-sc-capture" class="ghost">…或直接在电脑键盘上按组合键</button>
+          <p class="muted small">组合键会以宏的形式保存在键盘里。</p>
+        </div>
+
+        <div class="tab" data-pane="text">
+          <label>要输入的文字 <textarea id="ed-text" rows="3" placeholder="Hello!"></textarea></label>
+          <label>每个字符间隔（毫秒） <input id="ed-text-delay" type="number" min="1" max="1000" value="10"></label>
+          <p class="muted small">按美式键盘布局编码；大约最多 80 个字符。</p>
+        </div>
+
+        <div class="tab" data-pane="special">
+          <select id="ed-special" size="12"></select>
+        </div>
+
+        <div class="tab" data-pane="none">
+          <p>这个键什么也不做。</p>
+        </div>
+
+        <label class="repeat" id="ed-repeat-wrap">宏重复 <input id="ed-repeat" type="number" min="1" max="255" value="1"> 次</label>
+
+        <div class="actions">
+          <button id="ed-cancel">取消</button>
+          <button id="ed-apply" class="primary">写入键盘</button>
+        </div>
+      </aside>
+    </div>
+
+    <section class="card" id="lighting">
+      <h2>灯光</h2>
+      <p class="muted small">键盘只支持固件内置灯效，可调颜色、亮度、速度、方向；不能上传自定义动画或逐键颜色。</p>
+      <div class="light-row">
+        <label>效果 <select id="lt-mode"></select></label>
+      </div>
+      <div id="lt-settings">
+        <div class="light-row">
+          <label>亮度 <input type="range" id="lt-bright" min="0" max="6"> <output id="lt-bright-v"></output></label>
+          <label>速度 <input type="range" id="lt-speed" min="0" max="7"> <output id="lt-speed-v"></output></label>
+          <label>方向 <select id="lt-dir"><option value="0">正向</option><option value="1">反向</option></select></label>
+        </div>
+        <div class="colors" id="lt-colors"></div>
+      </div>
+      <div class="actions"><button id="lt-apply" class="primary">写入灯光</button></div>
+    </section>
+
+    <section class="card" id="power">
+      <h2>省电</h2>
+      <div class="light-row">
+        <label>无操作 <input id="pw-sleep" type="number" min="1" max="120"> 分钟后休眠</label>
+        <span class="muted" id="pw-off"></span>
+        <button id="pw-apply">写入</button>
+      </div>
+    </section>
+
+    <details class="card">
+      <summary>协议日志（排查问题用）</summary>
+      <pre id="log"></pre>
+    </details>
+  </main>
+
+  <div id="toast" hidden></div>
+
+  <script src="w911-protocol.js?v=20"></script>
+  <script src="w911-keys.js?v=20"></script>
+  <script src="w911-mock.js?v=20"></script>
+  <script src="w911-effects.js?v=20"></script>
+  <script src="app.js?v=20"></script>
+</body>
+</html>
